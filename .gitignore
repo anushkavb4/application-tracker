@@ -16,9 +16,8 @@ venv/
 # Node / browser extension tooling
 node_modules/
 dist/
+.output/
+.wxt/
 
-# Editor and OS files
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+# Local implementation notes
+readme-depth.md

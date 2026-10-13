@@ -2,30 +2,32 @@
 
 A local-first job-application tracker built around one rule: record user intent, not page content. The browser extension captures a small event from a page the user already has open; the backend stores the raw event before attempting any interpretation.
 
-## Phase 0: capture pipe
+## Completed slices
 
-The first milestone is to collect real URL and page-title examples during a week of job hunting. It includes only:
+### Slice 1: repository foundation
 
-- A user click on text matching `apply`, `easy apply`, or `submit application`.
-- A committed navigation to a known ATS domain.
-- A FastAPI endpoint that appends each received event to a local JSONL file.
-- Durable local queuing in `chrome.storage.local` and retrying delivery until the backend accepts the event.
+- FastAPI application with `/health` endpoint.
+- Docker Compose setup for API and PostgreSQL.
+- Environment template and backend package configuration.
 
-The extension does not parse jobs, inspect page DOM content, scrape fields, crawl, or open pages. Its capture payload is:
+### Slice 2: persistence foundation
 
-```json
-{
-  "url": "https://example.com/jobs/123",
-  "page_title": "Example role - Example company",
-  "referrer": "https://example.com/",
-  "trigger_type": "intent_click",
-  "tab_id": 42,
-  "nav_chain_id": "uuid",
-  "captured_at": "2026-09-29T12:00:00Z"
-}
-```
+- Async SQLAlchemy engine and database sessions.
+- Alembic migration workflow.
+- Initial schema for raw events, applications, application history, companies, parser rules, and manual overrides.
+- `/health/db` database connectivity endpoint.
+- Automatic migrations when the API container starts.
 
-`page_title` is required. `trigger_type` is one of `intent_click`, `ats_nav`, or `form_submit`; `form_submit` is planned for Phase 3, not Phase 0.
+Detailed local implementation notes are kept in `readme-depth.md`, which is intentionally ignored by Git.
+
+## Upcoming slices
+
+1. **Slice 3:** Pure URL normalization and parser engine with unit tests. **Implemented.**
+2. **Slice 4:** Event ingestion API with API-key authentication and idempotency.
+3. **Slice 5:** Application queries, statistics, and exports.
+4. **Slice 6:** Chrome extension capture and offline queue.
+5. **Slice 7:** Admin correction loop and reprocessing.
+6. **Phase 2:** Dashboard.
 
 ## Later phases
 
@@ -39,8 +41,8 @@ Raw events are the source of truth and remain append-only. Derived application r
 
 ## Explicitly out of scope for v1
 
-Authentication, deployment, job-description/salary/location scraping, crawling, automated page visits, and LinkedIn networking tracking. Phase 0 uses a local backend and JSONL; PostgreSQL and the dashboard come later.
+The pure parser package is now implemented and tested independently of PostgreSQL. Event ingestion, browser capture, exports, and the dashboard are still deferred to later slices.
 
 ## Repository status
 
-This repository is initialized for Phase 0. The extension and backend implementation have not been added yet.
+Slice 3 is implemented. The backend now has the database foundation and a pure parsing layer with unit tests. The event ingestion API, browser extension, exports, and dashboard are intentionally not implemented yet.
