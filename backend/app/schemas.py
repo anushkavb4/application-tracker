@@ -31,3 +31,38 @@ class EventBatchOut(BaseModel):
     duplicates: int
     applications_created: int
     applications_updated: int
+
+
+class ApplicationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    dedup_key: str
+    company_name: str | None
+    role: str | None
+    ats: str | None
+    external_id: str | None
+    url: str
+    status: str
+    status_source: str
+    confidence: int
+    first_seen_at: datetime
+    last_seen_at: datetime
+    applied_at: datetime | None
+    notes: str | None
+
+
+class ApplicationListOut(BaseModel):
+    items: list[ApplicationOut]
+    total: int
+    page: int
+    page_size: int
+
+
+class StatsSummaryOut(BaseModel):
+    total: int
+    status_counts: dict[str, int]
+    applied_count: int
+    response_count: int
+    response_rate: float
+    applications_over_time: list[dict[str, Any]]

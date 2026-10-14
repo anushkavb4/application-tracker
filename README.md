@@ -24,7 +24,7 @@ Detailed local implementation notes are kept in `readme-depth.md`, which is inte
 
 1. **Slice 3:** Pure URL normalization and parser engine with unit tests. **Implemented.**
 2. **Slice 4:** Event ingestion API with API-key authentication and idempotency. **Implemented.**
-3. **Slice 5:** Application queries, statistics, and exports.
+3. **Slice 5:** Application queries, statistics, and exports. **Implemented.**
 4. **Slice 6:** Chrome extension capture and offline queue.
 5. **Slice 7:** Admin correction loop and reprocessing.
 6. **Phase 2:** Dashboard.
@@ -41,8 +41,8 @@ Raw events are the source of truth and remain append-only. Derived application r
 
 ## Explicitly out of scope for v1
 
-The event ingestion API is implemented. The browser extension, exports, dashboard, and advanced correction/reprocessing endpoints are still deferred to later slices.
+The read-side API and exports are implemented. The browser extension, dashboard, and advanced correction/reprocessing endpoints are still deferred to later slices.
 
 ## Repository status
 
-Slice 4 is implemented. The backend now accepts authenticated event batches, stores raw events, creates or updates derived applications, records application history, and ignores duplicate client event IDs.
+Slice 5 is implemented. The backend now exposes authenticated application listing, filtering, pagination, detail retrieval, summary statistics, and CSV/JSON/JSONL exports.

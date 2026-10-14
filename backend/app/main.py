@@ -3,10 +3,16 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.db import engine
+from app.routers.applications import router as applications_router
 from app.routers.events import router as events_router
+from app.routers.exports import router as exports_router
+from app.routers.stats import router as stats_router
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 app.include_router(events_router)
+app.include_router(applications_router)
+app.include_router(stats_router)
+app.include_router(exports_router)
 
 
 @app.get("/health", tags=["health"])
