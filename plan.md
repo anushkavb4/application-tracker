@@ -191,12 +191,19 @@ teaches you to trust wrong data. Dedup and identity had to be right first.
 - Funnel chart from `/api/stats/summary`
 - Applications-over-time chart
 - Response rate and interview rate as headline numbers
-- Unattributed count, linking to the Phase 4 work queue
+- Unattributed count with a direct filter for applications missing company attribution
 
-### Status: ⬜ not started
+### Status: 🟡 dashboard implemented; live-data verification pending
 
-The API it consumes is finished. Every endpoint it needs already exists and is
-documented at `/docs`.
+The dashboard is implemented in `dashboard/`. It uses Next.js Route Handlers
+to keep the API key server-side, and adds an unattributed count/filter to the
+backend API. The Phase 4 pattern editor and full unmatched-pattern work queue
+remain out of scope for this slice.
+
+Live verification still requires `dashboard/.env.local` with `API_BASE_URL`
+and `API_KEY`. The development environment used for this implementation has
+another service on port 8000, so the UI was verified in its API-unavailable
+state rather than against application data.
 
 ### The one design constraint that must carry over
 
@@ -207,10 +214,11 @@ catch jobs you browsed and abandoned. If the dashboard renders both as
 
 ### Exit criteria
 
-- [ ] Table loads, filters and sorts against real data
-- [ ] Funnel renders with per-stage conversion
-- [ ] API key never reaches the browser
-- [ ] `viewed` and `applied` are unmistakably different on screen
+- [x] Application table supports status, ATS, company, date and text filters, sorting, and pagination
+- [x] Funnel and applications-over-time charts are connected to the stats API
+- [x] API key is sent only by server-side Route Handlers
+- [x] `viewed` and `applied` have distinct status treatments
+- [ ] Verify the dashboard with a configured backend and real application data
 
 ---
 
@@ -391,12 +399,11 @@ shell to live in; Phase 4's backend did not.
 
 In priority order:
 
-1. **Add the CI workflow.** ~40 lines, closes the only real Phase 1 gap, and is
-   the cheapest signal of engineering discipline in the whole repository.
-2. **Run the system for two weeks.** Phase 3 cannot be finished with code — it
-   needs real post-submit URLs from your own applications.
-3. **Build Phase 2.** The API is complete; this is the phase that makes the
-   project demonstrable.
-4. **Layer Phase 4's UI onto it** once the shell exists.
+1. **Connect the dashboard to the local backend** and verify filters, metrics,
+   and exports against real application data.
+2. **Run the tracker for two weeks.** Phase 3 needs real post-submit URLs from
+   your applications to tune confirmation patterns.
+3. **Add Phase 4's correction UI** to review unattributed records, edit parser
+   patterns, and trigger reprocessing.
 
-Item 2 runs in the background while you do 1, 3 and 4.
+Item 2 runs in the background while you do 1 and 3.

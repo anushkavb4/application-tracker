@@ -30,6 +30,7 @@ def _apply_filters(
     query: str | None,
     date_from: date | None,
     date_to: date | None,
+    unattributed: bool = False,
 ) -> Select:
     if status_filter:
         statement = statement.where(Application.status == status_filter)
@@ -54,6 +55,8 @@ def _apply_filters(
         statement = statement.where(
             Application.first_seen_at < datetime.combine(date_to, time.max, tzinfo=timezone.utc)
         )
+    if unattributed:
+        statement = statement.where(Application.company_name.is_(None))
     return statement
 
 
@@ -65,6 +68,7 @@ async def list_applications(
     q: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
+    unattributed: bool = False,
     sort: str = Query(default="last_seen_at"),
     order: str = Query(default="desc", pattern="^(asc|desc)$"),
     page: int = Query(default=1, ge=1),
@@ -75,7 +79,7 @@ async def list_applications(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported sort field")
 
     filtered = _apply_filters(
-        select(Application), status_filter, ats, company, q, date_from, date_to
+        select(Application), status_filter, ats, company, q, date_from, date_to, unattributed
     )
     total = await session.scalar(select(func.count()).select_from(filtered.subquery()))
     sort_column = _SORT_COLUMNS[sort]

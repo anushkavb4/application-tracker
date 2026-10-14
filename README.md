@@ -27,7 +27,7 @@ Detailed local implementation notes are kept in `readme-depth.md`, which is inte
 3. **Slice 5:** Application queries, statistics, and exports. **Implemented.**
 4. **Slice 6:** Chrome extension capture and offline queue. **Implemented.**
 5. **Slice 7:** Admin correction loop and reprocessing.
-6. **Phase 2:** Dashboard.
+6. **Phase 2:** Dashboard. **Implemented; local API connection required.**
 
 ## Later phases
 
@@ -41,8 +41,24 @@ Raw events are the source of truth and remain append-only. Derived application r
 
 ## Explicitly out of scope for v1
 
-The browser extension is now implemented locally. Admin corrections, reprocessing, and the dashboard remain deferred to later slices.
+The browser extension and Phase 2 dashboard are implemented locally. Admin corrections, pattern editing, and reprocessing UI remain deferred to later slices.
+
+## Run the dashboard
+
+Start the backend with Docker Compose after copying `.env.example` to `.env` and setting a local `API_KEY`. If port 8000 is already occupied, set `API_PORT=8001` in the root `.env` before starting it.
+
+In another terminal, configure and start the dashboard:
+
+```powershell
+cd dashboard
+Copy-Item .env.example .env.local
+# Set API_BASE_URL to the backend's host port and API_KEY to the same local key.
+npm ci
+npm run dev -- --port 3002
+```
+
+Open `http://localhost:3002`. The API key stays in the Next.js server environment; do not prefix it with `NEXT_PUBLIC_`. The proxy checks the backend health response before forwarding the key.
 
 ## Repository status
 
-Slice 6 is implemented. The repository now includes a WXT-based Manifest V3 extension with Apply-click capture, ATS navigation and submit capture, a storage-backed queue, retry/flush behavior, and a popup for API settings and queue status.
+Slice 6 and the Phase 2 dashboard are implemented. The repository includes a WXT-based Manifest V3 extension with Apply-click capture, ATS navigation and submit capture, a storage-backed queue, retry/flush behavior, and a popup for API settings and queue status. The dashboard provides application analytics and a filterable application table; verify it with a configured local backend.

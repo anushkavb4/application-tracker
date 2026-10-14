@@ -61,6 +61,7 @@ class ApplicationListOut(BaseModel):
 
 class StatsSummaryOut(BaseModel):
     total: int
+    unattributed_count: int
     status_counts: dict[str, int]
     applied_count: int
     response_count: int
