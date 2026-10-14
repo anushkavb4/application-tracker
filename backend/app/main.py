@@ -3,8 +3,10 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.db import engine
+from app.routers.events import router as events_router
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
+app.include_router(events_router)
 
 
 @app.get("/health", tags=["health"])

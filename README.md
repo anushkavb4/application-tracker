@@ -23,7 +23,7 @@ Detailed local implementation notes are kept in `readme-depth.md`, which is inte
 ## Upcoming slices
 
 1. **Slice 3:** Pure URL normalization and parser engine with unit tests. **Implemented.**
-2. **Slice 4:** Event ingestion API with API-key authentication and idempotency.
+2. **Slice 4:** Event ingestion API with API-key authentication and idempotency. **Implemented.**
 3. **Slice 5:** Application queries, statistics, and exports.
 4. **Slice 6:** Chrome extension capture and offline queue.
 5. **Slice 7:** Admin correction loop and reprocessing.
@@ -41,8 +41,8 @@ Raw events are the source of truth and remain append-only. Derived application r
 
 ## Explicitly out of scope for v1
 
-The pure parser package is now implemented and tested independently of PostgreSQL. Event ingestion, browser capture, exports, and the dashboard are still deferred to later slices.
+The event ingestion API is implemented. The browser extension, exports, dashboard, and advanced correction/reprocessing endpoints are still deferred to later slices.
 
 ## Repository status
 
-Slice 3 is implemented. The backend now has the database foundation and a pure parsing layer with unit tests. The event ingestion API, browser extension, exports, and dashboard are intentionally not implemented yet.
+Slice 4 is implemented. The backend now accepts authenticated event batches, stores raw events, creates or updates derived applications, records application history, and ignores duplicate client event IDs.

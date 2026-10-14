@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from app.parsing.engine import ParsedJob
+from app.parsing.normalize import normalize_url
 
 FUNNEL_ORDER = (
     "viewed",
@@ -33,7 +34,7 @@ class Resolution:
 def dedup_key(parsed: ParsedJob) -> str:
     if parsed.ats and parsed.external_id:
         return f"{parsed.ats}:{parsed.external_id}"
-    return parsed.url
+    return normalize_url(parsed.url)
 
 
 def confidence_for_trigger(trigger_type: str, parsed: ParsedJob) -> int:
