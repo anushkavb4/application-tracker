@@ -9,6 +9,8 @@ venv/
 
 # Local event captures and environment configuration
 *.jsonl
+applications*.json
+applications*.csv
 .env
 .env.*
 !.env.example

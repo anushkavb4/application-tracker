@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Application Tracker</title>
+    <style>
+      body { width: 300px; margin: 0; padding: 16px; font: 14px system-ui, sans-serif; color: #1f2937; }
+      h1 { font-size: 18px; margin: 0 0 12px; }
+      label { display: block; margin-top: 10px; font-weight: 600; }
+      input { box-sizing: border-box; width: 100%; margin-top: 4px; padding: 7px; }
+      button { margin-top: 12px; margin-right: 6px; padding: 7px 10px; cursor: pointer; }
+      #status { margin-top: 12px; white-space: pre-wrap; }
+      .muted { color: #6b7280; }
+    </style>
+  </head>
+  <body>
+    <h1>Application Tracker</h1>
+    <label for="api-url">API URL</label>
+    <input id="api-url" value="http://localhost:8000" />
+    <label for="api-key">API key</label>
+    <input id="api-key" type="password" autocomplete="off" />
+    <button id="save">Save</button>
+    <button id="test">Test connection</button>
+    <button id="flush">Flush queue</button>
+    <div id="status" class="muted">Loading…</div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

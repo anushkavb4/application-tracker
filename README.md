@@ -25,7 +25,7 @@ Detailed local implementation notes are kept in `readme-depth.md`, which is inte
 1. **Slice 3:** Pure URL normalization and parser engine with unit tests. **Implemented.**
 2. **Slice 4:** Event ingestion API with API-key authentication and idempotency. **Implemented.**
 3. **Slice 5:** Application queries, statistics, and exports. **Implemented.**
-4. **Slice 6:** Chrome extension capture and offline queue.
+4. **Slice 6:** Chrome extension capture and offline queue. **Implemented.**
 5. **Slice 7:** Admin correction loop and reprocessing.
 6. **Phase 2:** Dashboard.
 
@@ -41,8 +41,8 @@ Raw events are the source of truth and remain append-only. Derived application r
 
 ## Explicitly out of scope for v1
 
-The read-side API and exports are implemented. The browser extension, dashboard, and advanced correction/reprocessing endpoints are still deferred to later slices.
+The browser extension is now implemented locally. Admin corrections, reprocessing, and the dashboard remain deferred to later slices.
 
 ## Repository status
 
-Slice 5 is implemented. The backend now exposes authenticated application listing, filtering, pagination, detail retrieval, summary statistics, and CSV/JSON/JSONL exports.
+Slice 6 is implemented. The repository now includes a WXT-based Manifest V3 extension with Apply-click capture, ATS navigation and submit capture, a storage-backed queue, retry/flush behavior, and a popup for API settings and queue status.
