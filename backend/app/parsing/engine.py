@@ -1,5 +1,6 @@
 import logging
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -54,7 +55,7 @@ def _first_group(match: re.Match[str], name: str) -> str | None:
     return clean_title_fragment(value)
 
 
-def parse_job(url: str, page_title: str | None, patterns: list[PatternRow]) -> ParsedJob:
+def parse_job(url: str, page_title: str | None, patterns: Sequence[PatternRow]) -> ParsedJob:
     ordered_patterns = sorted(
         (pattern for pattern in patterns if pattern.enabled),
         key=lambda pattern: pattern.priority,

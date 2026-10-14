@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import cast
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +36,8 @@ async def summary(session: AsyncSession = Depends(get_db)) -> StatsSummaryOut:
         .order_by("day")
     )
     applications_over_time = [
-        {"date": day.date().isoformat(), "count": count} for day, count in over_time.all()
+        {"date": cast(datetime, day).date().isoformat(), "count": count}
+        for day, count in over_time.all()
     ]
 
     return StatsSummaryOut(

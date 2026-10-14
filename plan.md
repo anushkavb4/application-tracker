@@ -116,25 +116,25 @@ because it makes the bad data look authoritative.
 | Tests | Parser tests that need no database |
 | **CI** | **GitHub Actions: ruff + mypy + pytest** |
 
-### Status: ✅ complete, **except CI**
+### Status: ✅ complete; CI configured, **awaiting first Actions run**
 
-Everything above is built and working except the last row.
+Everything above is built and working. The CI workflow is now configured; its
+first hosted run will verify the checks on GitHub.
 
-### The gap
+### CI workflow
 
-**GitHub Actions CI is missing.** It was on the Phase 1 list and was not built.
-It is roughly 40 lines of YAML. The parser tests already run without Postgres,
-so the workflow needs no service container:
+The workflow runs on pushes and pull requests. It installs the backend and its
+development tools, then runs Ruff, mypy and pytest. The parser tests do not
+need Postgres, so the workflow requires no service container:
 
 ```yaml
-# .github/workflows/ci.yml — not yet written
-- ruff check .
+# .github/workflows/ci.yml
+- ruff check app tests
 - mypy app
 - pytest
 ```
 
-This is the single cheapest credibility signal in the repository, and it is the
-one thing standing between Phase 1 and genuinely done.
+The implemented Ruff command scopes linting to `app` and `tests`.
 
 ### The hard problems, and how they were solved
 
@@ -166,7 +166,7 @@ an `UPDATE`, not a Chrome Web Store release.
 - [x] Adding a pattern and reprocessing fixes history retroactively
 - [x] Full export to CSV and JSON
 - [x] `docker compose up --build` works from a clean clone
-- [ ] **CI green on every push**
+- [ ] **CI green on every push** (workflow configured; first hosted run pending)
 
 ---
 
