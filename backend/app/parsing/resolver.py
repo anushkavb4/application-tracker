@@ -10,6 +10,7 @@ FUNNEL_ORDER = (
     "interview",
     "offer",
 )
+APPLIED_CONFIDENCE_THRESHOLD = 70
 CONFIDENCE_BY_TRIGGER = {
     "intent_click": 10,
     "ats_nav": 30,
@@ -44,7 +45,7 @@ def confidence_for_trigger(trigger_type: str, parsed: ParsedJob) -> int:
 
 
 def status_for_confidence(confidence: int) -> str:
-    return "applied" if confidence >= 70 else "viewed"
+    return "applied" if confidence >= APPLIED_CONFIDENCE_THRESHOLD else "viewed"
 
 
 def resolve(parsed: ParsedJob, trigger_type: str) -> Resolution:

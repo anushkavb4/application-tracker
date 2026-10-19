@@ -9,11 +9,16 @@ export type Application = {
   url: string;
   status: string;
   confidence: number;
+  manual_fields: string[];
   first_seen_at: string;
   last_seen_at: string;
   applied_at: string | null;
   notes: string | null;
 };
+
+export type ApplicationCorrection = Partial<
+  Pick<Application, "company_name" | "role" | "status" | "notes">
+>;
 
 export type ApplicationList = {
   items: Application[];

@@ -17,11 +17,14 @@ import {
   FileSearch,
   Filter,
   LayoutDashboard,
+  Pencil,
   RefreshCw,
   Search,
+  Save,
   Send,
   Sparkles,
   UsersRound,
+  X,
 } from "lucide-react";
 import { useDeferredValue, useEffect, useState, useTransition, type ReactNode } from "react";
 import {
@@ -33,7 +36,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ApiErrorCode, Application, ApplicationList, StatsSummary } from "@/lib/types";
+import type { ApiErrorCode, Application, ApplicationCorrection, ApplicationList, StatsSummary } from "@/lib/types";
 
 const PAGE_SIZE = 25;
 const COMMON_STATUSES = ["viewed", "applied", "screening", "interview", "offer", "rejected", "withdrawn"];
@@ -60,6 +63,10 @@ function formatCount(value: number | undefined) {
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(value));
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 
 function initials(name: string | null) {
@@ -203,6 +210,19 @@ export default function DashboardView() {
     document.getElementById("applications")?.scrollIntoView({ behavior: "smooth" });
   }
 
+  async function saveApplication(applicationId: string, changes: ApplicationCorrection) {
+    const response = await fetch(`/api/dashboard/applications/${applicationId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(changes),
+      cache: "no-store",
+    });
+    const updated = await readResponse<Application>(response);
+    setApplications((current) => current.map((application) => application.id === updated.id ? updated : application));
+    setRefreshKey((key) => key + 1);
+    return updated;
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -239,7 +259,7 @@ export default function DashboardView() {
             <p className="page-subtitle">A clear read on the roles you are moving toward.</p>
           </div>
           <button className={`review-link${unattributed ? " selected" : ""}`} type="button" onClick={toggleUnattributed}>
-            <FileSearch size={15} /> Unattributed <b>{stats ? formatCount(stats.unattributed_count) : "N/A"}</b>
+            <FileSearch size={15} /> Needs review <b>{stats ? formatCount(stats.unattributed_count) : "N/A"}</b>
           </button>
         </section>
 
@@ -307,9 +327,10 @@ export default function DashboardView() {
                 <th>Source</th>
                 <th><SortButton label="Confidence" column="confidence" activeColumn={sort} order={order} onSort={changeSort} /></th>
                 <th><SortButton label="Last seen" column="last_seen_at" activeColumn={sort} order={order} onSort={changeSort} /></th>
-                <th>Link</th>
+                <th>Original URL</th>
+                <th><span className="sr-only">Actions</span></th>
               </tr></thead>
-              <tbody>{applications.map((application) => <ApplicationRow key={application.id} application={application} />)}</tbody>
+              <tbody>{applications.map((application) => <ApplicationRow key={application.id} application={application} needsReview={unattributed} onSave={saveApplication} />)}</tbody>
             </table></div>
           )}
 
@@ -333,15 +354,82 @@ function SortButton({ label, column, activeColumn, order, onSort }: { label: str
   return <button className="sort-button" type="button" onClick={() => onSort(column)}>{label} {icon}</button>;
 }
 
-function ApplicationRow({ application }: { application: Application }) {
-  const host = application.url.replace(/^https?:\/\//, "").split("/")[0];
-  return <tr>
-    <td><div className="company-cell"><span className="company-monogram">{initials(application.company_name)}</span><span className="company-name">{application.company_name || "Unattributed"}</span></div></td>
-    <td><span className="role-name">{application.role || "Role not identified"}</span><span className="role-subtitle">{application.external_id || host}</span></td>
-    <td><span className={`status-badge ${statusClass(application.status)}`}>{application.status === "viewed" && <Eye size={11} />}{displayStatus(application.status)}</span></td>
-    <td>{application.ats || "N/A"}</td>
-    <td><span className="confidence-cell"><span className="confidence-track"><span className="confidence-fill" style={{ display: "block", width: `${Math.min(100, Math.max(0, application.confidence))}%` }} /></span>{application.confidence}%</span></td>
-    <td>{formatDate(application.last_seen_at)}</td>
-    <td><a className="external-link" href={application.url} target="_blank" rel="noreferrer" aria-label={`Open ${application.role || "job listing"}`}><ExternalLink size={13} /></a></td>
-  </tr>;
+function ApplicationRow({
+  application,
+  needsReview,
+  onSave,
+}: {
+  application: Application;
+  needsReview: boolean;
+  onSave: (applicationId: string, changes: ApplicationCorrection) => Promise<Application>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [companyName, setCompanyName] = useState(application.company_name || "");
+  const [role, setRole] = useState(application.role || "");
+  const [status, setStatus] = useState(application.status);
+  const [notes, setNotes] = useState(application.notes || "");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const manualFields = application.manual_fields || [];
+  const reviewReasons = [
+    !application.company_name?.trim() && "Company missing",
+    !application.role?.trim() && "Role missing",
+    !application.ats?.trim() && "ATS missing",
+    application.confidence < 70 && "Low confidence",
+  ].filter(Boolean);
+  const sourceUrl = application.url.replace(/^https?:\/\//, "");
+
+  function beginEditing() {
+    setCompanyName(application.company_name || "");
+    setRole(application.role || "");
+    setStatus(application.status);
+    setNotes(application.notes || "");
+    setSaveError("");
+    setEditing(true);
+  }
+
+  async function submitCorrection(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const changes: ApplicationCorrection = {};
+    if (companyName !== (application.company_name || "")) changes.company_name = companyName;
+    if (role !== (application.role || "")) changes.role = role;
+    if (status !== application.status) changes.status = status;
+    if (notes !== (application.notes || "")) changes.notes = notes;
+    if (!Object.keys(changes).length) {
+      setEditing(false);
+      return;
+    }
+    if (changes.status && !window.confirm("Changing status affects funnel statistics. Continue?")) return;
+
+    setSaving(true);
+    setSaveError("");
+    try {
+      await onSave(application.id, changes);
+      setEditing(false);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "The correction could not be saved.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <>
+    <tr>
+      <td><div className="company-cell"><span className="company-monogram">{initials(application.company_name)}</span><span className="company-name">{application.company_name || (needsReview ? "Company missing" : "Unattributed")}{manualFields.includes("company_name") && <span className="manual-badge">Manual</span>}</span></div></td>
+      <td><span className="role-name">{application.role || (needsReview ? "Role missing" : "Role not identified")}{manualFields.includes("role") && <span className="manual-badge">Manual</span>}</span><span className="role-subtitle">{application.external_id || sourceUrl}</span>{needsReview && reviewReasons.length > 0 && <span className="review-reasons">{reviewReasons.join(", ")}</span>}</td>
+      <td><span className={`status-badge ${statusClass(application.status)}`}>{application.status === "viewed" && <Eye size={11} />}{displayStatus(application.status)}</span>{(manualFields.includes("status") || application.status_source === "manual") && <span className="manual-badge">Manual</span>}</td>
+      <td>{application.ats || (needsReview ? "ATS missing" : "N/A")}</td>
+      <td><span className="confidence-cell"><span className="confidence-track"><span className="confidence-fill" style={{ display: "block", width: `${Math.min(100, Math.max(0, application.confidence))}%` }} /></span>{application.confidence}%</span>{application.confidence < 70 && <span className="review-flag">Low</span>}</td>
+      <td><time dateTime={application.last_seen_at}>{needsReview ? formatDateTime(application.last_seen_at) : formatDate(application.last_seen_at)}</time></td>
+      <td><a className="url-link" href={application.url} target="_blank" rel="noreferrer" title={application.url} aria-label={`Open original page for ${application.role || "job listing"}`}><ExternalLink size={12} /><span>{sourceUrl}</span></a></td>
+      <td><button className="icon-button row-edit-button" type="button" aria-label={`Edit ${application.role || "application"}`} title="Edit application" onClick={beginEditing}><Pencil size={13} /></button></td>
+    </tr>
+    {editing && <tr className="edit-row"><td colSpan={8}><form className="application-edit-form" onSubmit={submitCorrection}>
+      <label className="edit-field">Company<input value={companyName} onChange={(event) => setCompanyName(event.target.value)} maxLength={255} /></label>
+      <label className="edit-field">Role<input value={role} onChange={(event) => setRole(event.target.value)} maxLength={512} /></label>
+      <label className="edit-field">Status<select value={status} onChange={(event) => setStatus(event.target.value)}>{Array.from(new Set([...COMMON_STATUSES, application.status])).map((value) => <option key={value} value={value}>{displayStatus(value)}</option>)}</select></label>
+      <label className="edit-field notes-field"><span className="edit-label-heading">Notes{manualFields.includes("notes") && <span className="manual-badge">Manual</span>}</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={10000} rows={2} /></label>
+      <div className="edit-actions">{saveError && <span className="edit-error" role="alert">{saveError}</span>}<button className="primary-button" type="submit" disabled={saving}><Save size={13} />{saving ? "Saving" : "Save"}</button><button className="secondary-button" type="button" disabled={saving} onClick={() => setEditing(false)}><X size={13} />Cancel</button></div>
+    </form></td></tr>}
+  </>;
 }

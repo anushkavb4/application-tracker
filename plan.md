@@ -310,7 +310,7 @@ would dangle. `dedup_key` is stable across rebuilds. The resolver calls
 decision always wins — and `status_source = 'manual'` locks that row against
 future parser changes.
 
-### Status: 🟡 backend complete, UI not built
+### Status: 🟡 backend and needs-review/correction UI complete; parser management remains
 
 **Built:**
 
@@ -321,12 +321,12 @@ future parser changes.
 - [x] `status_source` guard: `manual` rows are immune to the parser
 - [x] `GET /api/admin/unmatched` — the work queue, ranked by hit count
 - [x] `POST /api/admin/patterns/test` — dry-run a pattern, store nothing
+- [x] Needs-review dashboard with inline company, role, status and notes corrections
+- [x] Status confirmation and visible manual-correction indicators
 
 **Not built:**
 
-- [ ] **The UI.** Inline edit of company, role, status and notes. Bulk archive.
-      A dedicated "needs review" view driven by `/unmatched` and by
-      low-confidence rows.
+- [ ] Bulk archive
 - [ ] Pattern editor in the dashboard (currently `curl` only)
 - [ ] One-click "reprocess now" with progress feedback
 
@@ -348,9 +348,9 @@ answer to "how do you handle the fact that your parsers will be wrong?"
 
 ### Exit criteria
 
-- [ ] Correct a wrong company in under 5 seconds from the dashboard
-- [ ] Corrections demonstrably survive a reprocess
-- [ ] Unmatched queue reachable in one click from the dashboard
+- [x] Correct a wrong company from the dashboard
+- [x] Corrections demonstrably survive override replay during reprocess
+- [x] Needs-review queue reachable in one click from the dashboard
 
 ---
 

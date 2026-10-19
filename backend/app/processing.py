@@ -86,6 +86,19 @@ class ReprocessResult:
     overrides_applied: int
 
 
+def _apply_manual_override(application: Application, override: ManualOverride) -> None:
+    if override.status is not None:
+        application.status = override.status
+        application.status_source = "manual"
+    if override.company_name is not None:
+        application.company_name = override.company_name
+        application.company_id = None
+    if override.role is not None:
+        application.role = override.role
+    if override.notes is not None:
+        application.notes = override.notes
+
+
 async def reprocess(session: AsyncSession) -> ReprocessResult:
     """Rebuild every derived table from `raw_events` under the current patterns.
 
@@ -123,15 +136,7 @@ async def reprocess(session: AsyncSession) -> ReprocessResult:
             )
             if application is None:
                 continue
-            if override.status:
-                application.status = override.status
-                application.status_source = "manual"
-            if override.company_name:
-                application.company_name = override.company_name
-            if override.role:
-                application.role = override.role
-            if override.notes:
-                application.notes = override.notes
+            _apply_manual_override(application, override)
             overrides_applied += 1
 
         await session.flush()

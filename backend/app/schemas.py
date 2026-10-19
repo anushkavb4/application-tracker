@@ -50,6 +50,19 @@ class ApplicationOut(BaseModel):
     last_seen_at: datetime
     applied_at: datetime | None
     notes: str | None
+    manual_fields: list[str] = Field(default_factory=list)
+
+
+ApplicationStatus = Literal[
+    "viewed", "applied", "screening", "interview", "offer", "rejected", "withdrawn"
+]
+
+
+class ApplicationPatchIn(BaseModel):
+    company_name: str | None = Field(default=None, max_length=255)
+    role: str | None = Field(default=None, max_length=512)
+    status: ApplicationStatus | None = None
+    notes: str | None = Field(default=None, max_length=10000)
 
 
 class ApplicationListOut(BaseModel):

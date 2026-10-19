@@ -56,8 +56,13 @@ export async function forwardApiRequest(endpoint: string, incoming: Request): Pr
     }
 
     const headers = new Headers({ Accept: "application/json", "X-API-Key": apiKey });
+    const contentType = incoming.headers.get("content-type");
+    if (contentType) headers.set("Content-Type", contentType);
+    const method = incoming.method.toUpperCase();
     const upstream = await fetch(`${apiBaseUrl}${endpoint}${requestUrl.search}`, {
+      method,
       headers,
+      body: method === "GET" || method === "HEAD" ? undefined : await incoming.text(),
       cache: "no-store",
     });
     if (!upstream.ok) return upstreamError(upstream);
