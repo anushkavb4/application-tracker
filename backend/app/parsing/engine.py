@@ -3,6 +3,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
+from urllib.parse import unquote
 
 from app.parsing.normalize import clean_title_fragment, deslugify
 
@@ -47,12 +48,20 @@ def _compile(pattern: str, label: str) -> re.Pattern[str] | None:
         return None
 
 
-def _first_group(match: re.Match[str], name: str) -> str | None:
+def _raw_group(match: re.Match[str], name: str) -> str | None:
     try:
-        value = match.group(name)
+        return match.group(name)
     except (IndexError, KeyError):
         return None
-    return clean_title_fragment(value)
+
+
+def _first_group(match: re.Match[str], name: str) -> str | None:
+    return clean_title_fragment(_raw_group(match, name))
+
+
+def _url_group(match: re.Match[str], name: str) -> str | None:
+    value = _raw_group(match, name)
+    return clean_title_fragment(deslugify(unquote(value))) if value else None
 
 
 def parse_job(url: str, page_title: str | None, patterns: Sequence[PatternRow]) -> ParsedJob:
@@ -69,9 +78,9 @@ def parse_job(url: str, page_title: str | None, patterns: Sequence[PatternRow]) 
         if url_match is None:
             continue
 
-        company = _first_group(url_match, "company")
-        role = _first_group(url_match, "role")
-        external_id = _first_group(url_match, "external_id")
+        company = _url_group(url_match, "company")
+        role = _url_group(url_match, "role")
+        external_id = (_raw_group(url_match, "external_id") or "").strip() or None
         sources: dict[str, str] = {}
 
         if company:
@@ -93,9 +102,6 @@ def parse_job(url: str, page_title: str | None, patterns: Sequence[PatternRow]) 
                 if title_role:
                     role = title_role
                     sources["role"] = "title"
-
-        if role is None:
-            role = deslugify(_first_group(url_match, "role"))
 
         return ParsedJob(
             url=url,

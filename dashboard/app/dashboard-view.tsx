@@ -33,7 +33,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { Application, ApplicationList, StatsSummary } from "@/lib/types";
+import type { ApiErrorCode, Application, ApplicationList, StatsSummary } from "@/lib/types";
 
 const PAGE_SIZE = 25;
 const COMMON_STATUSES = ["viewed", "applied", "screening", "interview", "offer", "rejected", "withdrawn"];
@@ -72,9 +72,34 @@ function applicationUrl(params: URLSearchParams) {
   return `/api/dashboard/applications${query ? `?${query}` : ""}`;
 }
 
+type DashboardError = { code: ApiErrorCode; message: string };
+
+const ERROR_COPY: Record<ApiErrorCode, { title: string; status: string; hint: string }> = {
+  not_configured: { title: "Dashboard not configured.", status: "Not configured", hint: "Add API_BASE_URL and API_KEY to dashboard/.env.local." },
+  backend_unavailable: { title: "Tracker API unavailable.", status: "API unavailable", hint: "Start the backend and check API_BASE_URL." },
+  invalid_api_key: { title: "API key rejected.", status: "API key rejected", hint: "Make dashboard/.env.local match the backend's API_KEY." },
+  validation_error: { title: "Request rejected.", status: "Request rejected", hint: "Adjust the current filters and try again." },
+  backend_error: { title: "Tracker API error.", status: "API error", hint: "Check the backend logs, then refresh." },
+};
+
+class ApiError extends Error {
+  constructor(readonly code: ApiErrorCode, message: string) {
+    super(message);
+  }
+}
+
 async function readResponse<T>(response: Response): Promise<T> {
-  const payload = (await response.json()) as T & { detail?: string };
-  if (!response.ok) throw new Error(payload.detail || "The request could not be completed.");
+  let payload: (T & { code?: ApiErrorCode; detail?: unknown }) | null = null;
+  try {
+    payload = (await response.json()) as T & { code?: ApiErrorCode; detail?: unknown };
+  } catch {
+    payload = null;
+  }
+  if (!response.ok || !payload) {
+    const code = payload?.code && payload.code in ERROR_COPY ? payload.code : "backend_error";
+    const message = typeof payload?.detail === "string" ? payload.detail : `The request failed with HTTP ${response.status}.`;
+    throw new ApiError(code, message);
+  }
   return payload;
 }
 
@@ -94,7 +119,7 @@ export default function DashboardView() {
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<DashboardError | null>(null);
   const [isPending, startTransition] = useTransition();
   const deferredQuery = useDeferredValue(query);
 
@@ -124,11 +149,16 @@ export default function DashboardView() {
           setApplications(applicationData.items);
           setTotal(applicationData.total);
           setStats(statsData);
-          setError("");
+          setError(null);
         });
       } catch (caught) {
         if (controller.signal.aborted) return;
-        setError(caught instanceof Error ? caught.message : "The dashboard could not load.");
+        setApplications([]);
+        setTotal(0);
+        setStats(null);
+        setError(caught instanceof ApiError
+          ? { code: caught.code, message: caught.message }
+          : { code: "backend_unavailable", message: "The dashboard could not reach its API routes." });
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -188,7 +218,7 @@ export default function DashboardView() {
             <FileSearch size={16} /><span>Needs review</span><span className="nav-count">{stats ? formatCount(stats.unattributed_count) : "N/A"}</span>
           </button>
         </nav>
-        <div className="sidebar-bottom"><span className={`status-dot${!error ? " online" : ""}`} /><span>{error ? "API unavailable" : "Local workspace"}</span></div>
+        <div className="sidebar-bottom"><span className={`status-dot${!error ? " online" : ""}`} /><span>{error ? ERROR_COPY[error.code].status : "Local workspace"}</span></div>
       </aside>
 
       <main className="main-content" id="top">
@@ -213,7 +243,7 @@ export default function DashboardView() {
           </button>
         </section>
 
-        {error && <div className="error-banner" role="alert"><CircleAlert size={16} /><span><strong>Tracker API unavailable.</strong> {error}</span></div>}
+        {error && <div className="error-banner" role="alert"><CircleAlert size={16} /><span><strong>{ERROR_COPY[error.code].title}</strong> {error.message}</span></div>}
 
         <section className="metric-grid" aria-label="Application metrics">
           <Metric label="Tracked roles" value={stats ? formatCount(stats.total) : "N/A"} foot="Across all captured sources" icon={<BriefcaseBusiness size={15} />} />
@@ -237,7 +267,7 @@ export default function DashboardView() {
                     <Area type="monotone" dataKey="count" name="Roles" stroke="#477c57" strokeWidth={2} fill="url(#activity-fill)" activeDot={{ r: 4, fill: "#477c57", stroke: "white", strokeWidth: 2 }} />
                   </AreaChart>
                 </ResponsiveContainer>
-              ) : <div className="empty-state"><span className="empty-icon"><ChartNoAxesCombined size={17} /></span><strong>{error ? "API unavailable" : stats ? "No activity yet" : "Waiting for data"}</strong><span>{error ? "Connect to the tracker API to view activity." : "Captured roles will appear here."}</span></div>}
+              ) : <div className="empty-state"><span className="empty-icon"><ChartNoAxesCombined size={17} /></span><strong>{error ? ERROR_COPY[error.code].status : stats ? "No activity yet" : "Waiting for data"}</strong><span>{error ? ERROR_COPY[error.code].hint : "Captured roles will appear here."}</span></div>}
             </div>
           </div>
           <div className="panel">
@@ -254,7 +284,7 @@ export default function DashboardView() {
 
         <section className="panel table-panel" id="applications" aria-label="Applications">
           <div className="table-head">
-            <div className="table-heading-group"><h2>{unattributed ? "Needs review" : "All applications"}</h2><span className="result-count">{error && !stats ? "Unavailable" : loading ? "Loading" : `${formatCount(total)} records`}</span></div>
+            <div className="table-heading-group"><h2>{unattributed ? "Needs review" : "All applications"}</h2><span className="result-count">{error ? "Unavailable" : loading ? "Loading" : `${formatCount(total)} records`}</span></div>
             {unattributed && <button className="icon-button" type="button" aria-label="Clear needs-review filter" title="Clear needs-review filter" onClick={() => setUnattributed(false)}><Filter size={14} /></button>}
           </div>
           <div className="filters" role="search">
@@ -267,7 +297,7 @@ export default function DashboardView() {
           </div>
 
           {loading && applications.length === 0 ? <div className="loading-state"><span className="loading-line" /><span>Loading applications</span></div> : applications.length === 0 ? (
-            <div className="empty-state"><span className="empty-icon"><FileSearch size={17} /></span><strong>{error ? "Tracker data is unavailable" : "No matching applications"}</strong><span>{error ? "Start the API and check its connection settings." : "Try adjusting the current filters."}</span></div>
+            <div className="empty-state"><span className="empty-icon"><FileSearch size={17} /></span><strong>{error ? "Tracker data is unavailable" : "No matching applications"}</strong><span>{error ? ERROR_COPY[error.code].hint : "Try adjusting the current filters."}</span></div>
           ) : (
             <div className="table-scroll"><table className="application-table">
               <thead><tr>

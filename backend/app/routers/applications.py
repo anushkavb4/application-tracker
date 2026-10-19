@@ -36,7 +36,7 @@ def _apply_filters(
     if status_filter:
         statement = statement.where(Application.status == status_filter)
     if ats:
-        statement = statement.where(Application.ats.ilike(ats))
+        statement = statement.where(Application.ats.ilike(f"%{ats}%"))
     if company:
         statement = statement.where(Application.company_name.ilike(f"%{company}%"))
     if query:

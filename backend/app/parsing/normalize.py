@@ -7,6 +7,8 @@ _MEANINGFUL_QUERY_KEYS = {
     "job_id",
     "jobId",
     "jk",
+    "jl",
+    "pid",
     "requisitionId",
 }
 _LEGAL_SUFFIXES = ("inc", "incorporated", "llc", "ltd", "limited", "corp", "corporation")

@@ -31,3 +31,10 @@ export type StatsSummary = {
   response_rate: number;
   applications_over_time: { date: string; count: number }[];
 };
+
+export type ApiErrorCode =
+  | "not_configured"
+  | "backend_unavailable"
+  | "invalid_api_key"
+  | "validation_error"
+  | "backend_error";
