@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application_filters import unattributed_condition
 from app.db import get_db
 from app.deps import require_api_key
 from app.models import Application
@@ -16,6 +17,12 @@ router = APIRouter(prefix="/api/stats", tags=["stats"], dependencies=[Depends(re
 @router.get("/summary", response_model=StatsSummaryOut)
 async def summary(session: AsyncSession = Depends(get_db)) -> StatsSummaryOut:
     total = int(await session.scalar(select(func.count(Application.id))) or 0)
+    unattributed_count = int(
+        await session.scalar(
+            select(func.count(Application.id)).where(unattributed_condition())
+        )
+        or 0
+    )
     grouped = await session.execute(
         select(Application.status, func.count(Application.id)).group_by(Application.status)
     )
@@ -42,6 +49,7 @@ async def summary(session: AsyncSession = Depends(get_db)) -> StatsSummaryOut:
 
     return StatsSummaryOut(
         total=total,
+        unattributed_count=unattributed_count,
         status_counts=status_counts,
         applied_count=applied_count,
         response_count=response_count,
