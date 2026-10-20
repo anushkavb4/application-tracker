@@ -23,10 +23,12 @@ import {
   Save,
   Send,
   Sparkles,
+  SlidersHorizontal,
   UsersRound,
   X,
 } from "lucide-react";
 import { useDeferredValue, useEffect, useState, useTransition, type ReactNode } from "react";
+import PatternManagement from "./pattern-management";
 import {
   Area,
   AreaChart,
@@ -111,6 +113,7 @@ async function readResponse<T>(response: Response): Promise<T> {
 }
 
 export default function DashboardView() {
+  const [activeView, setActiveView] = useState<"overview" | "patterns">("overview");
   const [applications, setApplications] = useState<Application[]>([]);
   const [stats, setStats] = useState<StatsSummary | null>(null);
   const [total, setTotal] = useState(0);
@@ -205,6 +208,7 @@ export default function DashboardView() {
   const lastRecord = Math.min(page * PAGE_SIZE, total);
 
   function toggleUnattributed() {
+    setActiveView("overview");
     setUnattributed((current) => !current);
     setPage(1);
     document.getElementById("applications")?.scrollIntoView({ behavior: "smooth" });
@@ -232,26 +236,28 @@ export default function DashboardView() {
         </a>
         <span className="nav-label">Workspace</span>
         <nav className="side-nav" aria-label="Main navigation">
-          <a className="nav-item active" href="#top" aria-current="page"><LayoutDashboard size={16} /><span>Overview</span></a>
-          <a className="nav-item" href="#applications"><BriefcaseBusiness size={16} /><span>Applications</span><span className="nav-count">{stats ? formatCount(stats.total) : "N/A"}</span></a>
+          <button className={`nav-item${activeView === "overview" ? " active" : ""}`} type="button" onClick={() => setActiveView("overview")} aria-current={activeView === "overview" ? "page" : undefined}><LayoutDashboard size={16} /><span>Overview</span></button>
+          <a className="nav-item" href="#applications" onClick={() => setActiveView("overview")}><BriefcaseBusiness size={16} /><span>Applications</span><span className="nav-count">{stats ? formatCount(stats.total) : "N/A"}</span></a>
           <button className={`nav-item${unattributed ? " active" : ""}`} onClick={toggleUnattributed} type="button">
             <FileSearch size={16} /><span>Needs review</span><span className="nav-count">{stats ? formatCount(stats.unattributed_count) : "N/A"}</span>
           </button>
+          <button className={`nav-item${activeView === "patterns" ? " active" : ""}`} type="button" onClick={() => setActiveView("patterns")} aria-current={activeView === "patterns" ? "page" : undefined}><SlidersHorizontal size={16} /><span>Parser patterns</span></button>
         </nav>
         <div className="sidebar-bottom"><span className={`status-dot${!error ? " online" : ""}`} /><span>{error ? ERROR_COPY[error.code].status : "Local workspace"}</span></div>
       </aside>
 
       <main className="main-content" id="top">
         <div className="topline">
-          <div className="breadcrumb"><span>Workspace</span><span>/</span><strong>Overview</strong></div>
+          <div className="breadcrumb"><span>Workspace</span><span>/</span><strong>{activeView === "patterns" ? "Parser patterns" : "Overview"}</strong></div>
           <div className="top-actions">
-            <span className="today-label">APPLICATION PIPELINE</span>
-            <button className="icon-button" type="button" aria-label="Refresh dashboard" title="Refresh dashboard" disabled={loading} onClick={() => setRefreshKey((key) => key + 1)}>
+            <span className="today-label">{activeView === "patterns" ? "PARSER WORKSPACE" : "APPLICATION PIPELINE"}</span>
+            {activeView === "overview" && <button className="icon-button" type="button" aria-label="Refresh dashboard" title="Refresh dashboard" disabled={loading} onClick={() => setRefreshKey((key) => key + 1)}>
               <RefreshCw size={15} className={loading ? "spin" : ""} />
-            </button>
+            </button>}
           </div>
         </div>
 
+        {activeView === "patterns" ? <PatternManagement /> : <>
         <section className="page-heading">
           <div>
             <div className="eyebrow"><span className="eyebrow-mark" /> YOUR SEARCH, IN FOCUS</div>
@@ -340,6 +346,7 @@ export default function DashboardView() {
           </div></div>
         </section>
         <div className="footer-note"><span>FIELDNOTE / PRIVATE BY DEFAULT</span><span>{isPending ? "Updating view..." : "LOCAL DATA"}</span></div>
+        </>}
       </main>
     </div>
   );

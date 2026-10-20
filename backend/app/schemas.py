@@ -1,8 +1,9 @@
 from datetime import datetime
+import re
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 
 TriggerType = Literal["intent_click", "ats_nav", "form_submit"]
@@ -80,3 +81,99 @@ class StatsSummaryOut(BaseModel):
     response_count: int
     response_rate: float
     applications_over_time: list[dict[str, Any]]
+
+
+class PatternFields(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    ats: str = Field(min_length=1, max_length=128)
+    kind: str = Field(default="job_posting", min_length=1, max_length=32)
+    url_regex: str = Field(min_length=1)
+    title_regex: str | None = None
+    priority: int = 100
+    enabled: bool = True
+
+    @field_validator("url_regex")
+    @classmethod
+    def validate_url_regex(cls, value: str) -> str:
+        try:
+            re.compile(value)
+        except re.error as error:
+            raise ValueError(f"Invalid URL regex: {error}") from error
+        return value
+
+    @field_validator("title_regex")
+    @classmethod
+    def validate_title_regex(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            re.compile(value)
+        except re.error as error:
+            raise ValueError(f"Invalid title regex: {error}") from error
+        return value
+
+
+class PatternCreateIn(PatternFields):
+    pass
+
+
+class PatternPatchIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    ats: str | None = Field(default=None, min_length=1, max_length=128)
+    kind: str | None = Field(default=None, min_length=1, max_length=32)
+    url_regex: str | None = Field(default=None, min_length=1)
+    title_regex: str | None = None
+    priority: int | None = None
+    enabled: bool | None = None
+
+    @field_validator("url_regex")
+    @classmethod
+    def validate_url_regex(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            re.compile(value)
+        except re.error as error:
+            raise ValueError(f"Invalid URL regex: {error}") from error
+        return value
+
+    @field_validator("title_regex")
+    @classmethod
+    def validate_title_regex(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            re.compile(value)
+        except re.error as error:
+            raise ValueError(f"Invalid title regex: {error}") from error
+        return value
+
+
+class PatternOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    ats: str
+    kind: str
+    url_regex: str
+    title_regex: str | None
+    priority: int
+    enabled: bool
+    created_at: datetime
+
+
+class PatternTestIn(BaseModel):
+    url: HttpUrl
+    page_title: str | None = None
+    pattern: PatternCreateIn
+
+
+class PatternTestOut(BaseModel):
+    matched: bool
+    ats: str | None
+    company: str | None
+    role: str | None
+    external_id: str | None
+    sources: dict[str, str]

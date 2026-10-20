@@ -37,6 +37,37 @@ export type StatsSummary = {
   applications_over_time: { date: string; count: number }[];
 };
 
+export type ParserPattern = {
+  id: string;
+  ats: string;
+  kind: string;
+  url_regex: string;
+  title_regex: string | null;
+  priority: number;
+  enabled: boolean;
+  created_at: string;
+};
+
+export type ParserPatternInput = Pick<
+  ParserPattern,
+  "ats" | "kind" | "url_regex" | "title_regex" | "priority" | "enabled"
+>;
+
+export type PatternTestInput = {
+  url: string;
+  page_title: string;
+  pattern: ParserPatternInput;
+};
+
+export type PatternTestResult = {
+  matched: boolean;
+  ats: string | null;
+  company: string | null;
+  role: string | null;
+  external_id: string | null;
+  sources: Record<string, string>;
+};
+
 export type ApiErrorCode =
   | "not_configured"
   | "backend_unavailable"

@@ -11,6 +11,7 @@ from app.processing import seed_patterns_if_empty
 from app.routers.applications import router as applications_router
 from app.routers.events import router as events_router
 from app.routers.exports import router as exports_router
+from app.routers.patterns import router as patterns_router
 from app.routers.stats import router as stats_router
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ app.include_router(events_router)
 app.include_router(applications_router)
 app.include_router(stats_router)
 app.include_router(exports_router)
+app.include_router(patterns_router)
 
 
 @app.get("/health", tags=["health"])
