@@ -37,6 +37,14 @@ export type StatsSummary = {
   applications_over_time: { date: string; count: number }[];
 };
 
+export type ReprocessResult = {
+  raw_events_processed: number;
+  applications_rebuilt: number;
+  history_records_rebuilt: number;
+  overrides_applied: number;
+  errors: string[];
+};
+
 export type ParserPattern = {
   id: string;
   ats: string;

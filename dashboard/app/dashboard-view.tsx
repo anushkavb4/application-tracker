@@ -10,6 +10,7 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarDays,
+  CheckCircle2,
   ChartNoAxesCombined,
   CircleAlert,
   ExternalLink,
@@ -27,7 +28,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { useDeferredValue, useEffect, useState, useTransition, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import PatternManagement from "./pattern-management";
 import {
   Area,
@@ -38,7 +39,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ApiErrorCode, Application, ApplicationCorrection, ApplicationList, StatsSummary } from "@/lib/types";
+import type { ApiErrorCode, Application, ApplicationCorrection, ApplicationList, ReprocessResult, StatsSummary } from "@/lib/types";
 
 const PAGE_SIZE = 25;
 const COMMON_STATUSES = ["viewed", "applied", "screening", "interview", "offer", "rejected", "withdrawn"];
@@ -130,6 +131,9 @@ export default function DashboardView() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<DashboardError | null>(null);
+  const [reprocessing, setReprocessing] = useState(false);
+  const [reprocessError, setReprocessError] = useState("");
+  const [reprocessResult, setReprocessResult] = useState<ReprocessResult | null>(null);
   const [isPending, startTransition] = useTransition();
   const deferredQuery = useDeferredValue(query);
 
@@ -227,6 +231,31 @@ export default function DashboardView() {
     return updated;
   }
 
+  async function reprocessHistory() {
+    const confirmed = window.confirm(
+      "Reprocess history?\n\nRaw events will be preserved. Derived applications and history records will be rebuilt using the current parser patterns. Manual overrides will be replayed. Application UUIDs may change.\n\nContinue?",
+    );
+    if (!confirmed) return;
+
+    setReprocessing(true);
+    setReprocessError("");
+    setReprocessResult(null);
+    try {
+      const response = await fetch("/api/dashboard/reprocess", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const result = await readResponse<ReprocessResult>(response);
+      setReprocessResult(result);
+      setPage(1);
+      setRefreshKey((key) => key + 1);
+    } catch (caught) {
+      setReprocessError(caught instanceof Error ? caught.message : "History could not be reprocessed.");
+    } finally {
+      setReprocessing(false);
+    }
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -236,12 +265,12 @@ export default function DashboardView() {
         </a>
         <span className="nav-label">Workspace</span>
         <nav className="side-nav" aria-label="Main navigation">
-          <button className={`nav-item${activeView === "overview" ? " active" : ""}`} type="button" onClick={() => setActiveView("overview")} aria-current={activeView === "overview" ? "page" : undefined}><LayoutDashboard size={16} /><span>Overview</span></button>
-          <a className="nav-item" href="#applications" onClick={() => setActiveView("overview")}><BriefcaseBusiness size={16} /><span>Applications</span><span className="nav-count">{stats ? formatCount(stats.total) : "N/A"}</span></a>
-          <button className={`nav-item${unattributed ? " active" : ""}`} onClick={toggleUnattributed} type="button">
+          <button className={`nav-item${activeView === "overview" ? " active" : ""}`} type="button" onClick={() => setActiveView("overview")} aria-label="Overview" aria-current={activeView === "overview" ? "page" : undefined}><LayoutDashboard size={16} /><span>Overview</span></button>
+          <a className="nav-item" href="#applications" aria-label="Applications" onClick={() => setActiveView("overview")}><BriefcaseBusiness size={16} /><span>Applications</span><span className="nav-count">{stats ? formatCount(stats.total) : "N/A"}</span></a>
+          <button className={`nav-item${unattributed ? " active" : ""}`} onClick={toggleUnattributed} type="button" aria-label={`Needs review, ${formatCount(stats?.unattributed_count)} applications`} aria-pressed={unattributed}>
             <FileSearch size={16} /><span>Needs review</span><span className="nav-count">{stats ? formatCount(stats.unattributed_count) : "N/A"}</span>
           </button>
-          <button className={`nav-item${activeView === "patterns" ? " active" : ""}`} type="button" onClick={() => setActiveView("patterns")} aria-current={activeView === "patterns" ? "page" : undefined}><SlidersHorizontal size={16} /><span>Parser patterns</span></button>
+          <button className={`nav-item${activeView === "patterns" ? " active" : ""}`} type="button" onClick={() => setActiveView("patterns")} aria-label="Parser patterns" aria-current={activeView === "patterns" ? "page" : undefined}><SlidersHorizontal size={16} /><span>Parser patterns</span></button>
         </nav>
         <div className="sidebar-bottom"><span className={`status-dot${!error ? " online" : ""}`} /><span>{error ? ERROR_COPY[error.code].status : "Local workspace"}</span></div>
       </aside>
@@ -251,11 +280,28 @@ export default function DashboardView() {
           <div className="breadcrumb"><span>Workspace</span><span>/</span><strong>{activeView === "patterns" ? "Parser patterns" : "Overview"}</strong></div>
           <div className="top-actions">
             <span className="today-label">{activeView === "patterns" ? "PARSER WORKSPACE" : "APPLICATION PIPELINE"}</span>
+            <button className="secondary-button reprocess-button" type="button" disabled={reprocessing} onClick={() => void reprocessHistory()}>
+              <RefreshCw size={13} className={reprocessing ? "spin" : ""} />
+              {reprocessing ? "Reprocessing..." : "Reprocess history"}
+            </button>
             {activeView === "overview" && <button className="icon-button" type="button" aria-label="Refresh dashboard" title="Refresh dashboard" disabled={loading} onClick={() => setRefreshKey((key) => key + 1)}>
               <RefreshCw size={15} className={loading ? "spin" : ""} />
             </button>}
           </div>
         </div>
+
+        {reprocessError && <div className="operation-banner operation-error" role="alert"><CircleAlert size={16} /><span><strong>Reprocessing failed.</strong> {reprocessError}</span></div>}
+        {reprocessResult && <div className={`operation-banner${reprocessResult.errors.length ? " operation-error" : " operation-success"}`} role="status">
+          {reprocessResult.errors.length ? <CircleAlert size={16} /> : <CheckCircle2 size={16} />}
+          <div>
+            <strong>{reprocessResult.errors.length ? "Reprocessing completed with errors." : "History reprocessed successfully."}</strong>
+            <span className="operation-counts">
+              {formatCount(reprocessResult.raw_events_processed)} raw events processed · {formatCount(reprocessResult.applications_rebuilt)} applications rebuilt · {formatCount(reprocessResult.history_records_rebuilt)} history records rebuilt · {formatCount(reprocessResult.overrides_applied)} manual overrides replayed
+            </span>
+            {reprocessResult.errors.length > 0 && <ul>{reprocessResult.errors.map((message, index) => <li key={`${index}-${message}`}>{message}</li>)}</ul>}
+            {!reprocessResult.errors.length && <span className="operation-counts">No errors occurred. Applications and statistics have been refreshed.</span>}
+          </div>
+        </div>}
 
         {activeView === "patterns" ? <PatternManagement /> : <>
         <section className="page-heading">
@@ -264,7 +310,7 @@ export default function DashboardView() {
             <h1>Application overview</h1>
             <p className="page-subtitle">A clear read on the roles you are moving toward.</p>
           </div>
-          <button className={`review-link${unattributed ? " selected" : ""}`} type="button" onClick={toggleUnattributed}>
+          <button className={`review-link${unattributed ? " selected" : ""}`} type="button" onClick={toggleUnattributed} aria-label={`Needs review, ${formatCount(stats?.unattributed_count)} applications`} aria-pressed={unattributed}>
             <FileSearch size={15} /> Needs review <b>{stats ? formatCount(stats.unattributed_count) : "N/A"}</b>
           </button>
         </section>
@@ -287,8 +333,8 @@ export default function DashboardView() {
                   <AreaChart data={stats.applications_over_time} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
                     <defs><linearGradient id="activity-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#71a17c" stopOpacity={0.28} /><stop offset="100%" stopColor="#71a17c" stopOpacity={0.02} /></linearGradient></defs>
                     <CartesianGrid vertical={false} stroke="#edf1ed" />
-                    <XAxis dataKey="date" tickFormatter={(value: string) => value.slice(5)} tickLine={false} axisLine={false} tick={{ fill: "#87938a", fontSize: 9 }} minTickGap={24} />
-                    <YAxis allowDecimals={false} width={28} tickLine={false} axisLine={false} tick={{ fill: "#87938a", fontSize: 9 }} />
+                    <XAxis dataKey="date" tickFormatter={(value: string) => value.slice(5)} tickLine={false} axisLine={false} tick={{ fill: "#5e6d63", fontSize: 9 }} minTickGap={24} />
+                    <YAxis allowDecimals={false} width={28} tickLine={false} axisLine={false} tick={{ fill: "#5e6d63", fontSize: 9 }} />
                     <Tooltip labelFormatter={(value) => String(value)} contentStyle={{ border: "1px solid #e3eae4", borderRadius: 5, fontSize: 11 }} />
                     <Area type="monotone" dataKey="count" name="Roles" stroke="#477c57" strokeWidth={2} fill="url(#activity-fill)" activeDot={{ r: 4, fill: "#477c57", stroke: "white", strokeWidth: 2 }} />
                   </AreaChart>
@@ -325,22 +371,23 @@ export default function DashboardView() {
           {loading && applications.length === 0 ? <div className="loading-state"><span className="loading-line" /><span>Loading applications</span></div> : applications.length === 0 ? (
             <div className="empty-state"><span className="empty-icon"><FileSearch size={17} /></span><strong>{error ? "Tracker data is unavailable" : "No matching applications"}</strong><span>{error ? ERROR_COPY[error.code].hint : "Try adjusting the current filters."}</span></div>
           ) : (
-            <div className="table-scroll"><table className="application-table">
+            <div className="table-scroll" role="region" aria-label="Application results" tabIndex={0}><table className="application-table">
+              <caption className="sr-only">Tracked job applications and their details</caption>
               <thead><tr>
-                <th><SortButton label="Company" column="company" activeColumn={sort} order={order} onSort={changeSort} /></th>
-                <th><SortButton label="Role" column="role" activeColumn={sort} order={order} onSort={changeSort} /></th>
-                <th><SortButton label="Status" column="status" activeColumn={sort} order={order} onSort={changeSort} /></th>
-                <th>Source</th>
-                <th><SortButton label="Confidence" column="confidence" activeColumn={sort} order={order} onSort={changeSort} /></th>
-                <th><SortButton label="Last seen" column="last_seen_at" activeColumn={sort} order={order} onSort={changeSort} /></th>
-                <th>Original URL</th>
-                <th><span className="sr-only">Actions</span></th>
+                <th scope="col" aria-sort={sort === "company" ? order === "asc" ? "ascending" : "descending" : undefined}><SortButton label="Company" column="company" activeColumn={sort} order={order} onSort={changeSort} /></th>
+                <th scope="col" aria-sort={sort === "role" ? order === "asc" ? "ascending" : "descending" : undefined}><SortButton label="Role" column="role" activeColumn={sort} order={order} onSort={changeSort} /></th>
+                <th scope="col" aria-sort={sort === "status" ? order === "asc" ? "ascending" : "descending" : undefined}><SortButton label="Status" column="status" activeColumn={sort} order={order} onSort={changeSort} /></th>
+                <th scope="col">Source</th>
+                <th scope="col" aria-sort={sort === "confidence" ? order === "asc" ? "ascending" : "descending" : undefined}><SortButton label="Confidence" column="confidence" activeColumn={sort} order={order} onSort={changeSort} /></th>
+                <th scope="col" aria-sort={sort === "last_seen_at" ? order === "asc" ? "ascending" : "descending" : undefined}><SortButton label="Last seen" column="last_seen_at" activeColumn={sort} order={order} onSort={changeSort} /></th>
+                <th scope="col">Original URL</th>
+                <th scope="col"><span className="sr-only">Actions</span></th>
               </tr></thead>
               <tbody>{applications.map((application) => <ApplicationRow key={application.id} application={application} needsReview={unattributed} onSave={saveApplication} />)}</tbody>
             </table></div>
           )}
 
-          <div className="table-footer"><span>{stats ? `Showing ${firstRecord}-${lastRecord} of ${formatCount(total)}` : error ? "Application data unavailable" : "Loading records"}</span><div className="pagination">
+          <div className="table-footer"><span>{stats ? `Showing ${firstRecord}-${lastRecord} of ${formatCount(total)}` : error ? "Application data unavailable" : "Loading records"}</span><div className="pagination" aria-label="Application pages">
             <button className="icon-button" type="button" aria-label="Previous page" title="Previous page" disabled={page <= 1 || loading} onClick={() => setPage((current) => Math.max(1, current - 1))}><ArrowLeft size={14} /></button>
             <button className="icon-button" type="button" aria-label="Next page" title="Next page" disabled={page >= pageCount || loading} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}><ArrowRight size={14} /></button>
           </div></div>
@@ -358,7 +405,8 @@ function Metric({ label, value, foot, icon }: { label: string; value: string; fo
 
 function SortButton({ label, column, activeColumn, order, onSort }: { label: string; column: string; activeColumn: string; order: "asc" | "desc"; onSort: (column: string) => void }) {
   const icon = column === activeColumn ? order === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} /> : <ArrowDownUp size={11} />;
-  return <button className="sort-button" type="button" onClick={() => onSort(column)}>{label} {icon}</button>;
+  const sortDirection = column === activeColumn ? order === "asc" ? "ascending" : "descending" : "not sorted";
+  return <button className="sort-button" type="button" aria-label={`Sort by ${label}, ${sortDirection}`} onClick={() => onSort(column)}>{label} {icon}</button>;
 }
 
 function ApplicationRow({
@@ -371,6 +419,9 @@ function ApplicationRow({
   onSave: (applicationId: string, changes: ApplicationCorrection) => Promise<Application>;
 }) {
   const [editing, setEditing] = useState(false);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const wasEditing = useRef(false);
   const [companyName, setCompanyName] = useState(application.company_name || "");
   const [role, setRole] = useState(application.role || "");
   const [status, setStatus] = useState(application.status);
@@ -385,6 +436,16 @@ function ApplicationRow({
     application.confidence < 70 && "Low confidence",
   ].filter(Boolean);
   const sourceUrl = application.url.replace(/^https?:\/\//, "");
+
+  useEffect(() => {
+    if (editing) {
+      editInputRef.current?.focus();
+      wasEditing.current = true;
+    } else if (wasEditing.current) {
+      editButtonRef.current?.focus();
+      wasEditing.current = false;
+    }
+  }, [editing]);
 
   function beginEditing() {
     setCompanyName(application.company_name || "");
@@ -429,10 +490,10 @@ function ApplicationRow({
       <td><span className="confidence-cell"><span className="confidence-track"><span className="confidence-fill" style={{ display: "block", width: `${Math.min(100, Math.max(0, application.confidence))}%` }} /></span>{application.confidence}%</span>{application.confidence < 70 && <span className="review-flag">Low</span>}</td>
       <td><time dateTime={application.last_seen_at}>{needsReview ? formatDateTime(application.last_seen_at) : formatDate(application.last_seen_at)}</time></td>
       <td><a className="url-link" href={application.url} target="_blank" rel="noreferrer" title={application.url} aria-label={`Open original page for ${application.role || "job listing"}`}><ExternalLink size={12} /><span>{sourceUrl}</span></a></td>
-      <td><button className="icon-button row-edit-button" type="button" aria-label={`Edit ${application.role || "application"}`} title="Edit application" onClick={beginEditing}><Pencil size={13} /></button></td>
+      <td><button ref={editButtonRef} className="icon-button row-edit-button" type="button" aria-label={`Edit ${application.role || application.company_name || "application"}`} title="Edit application" aria-expanded={editing} aria-controls={editing ? `application-edit-${application.id}` : undefined} onClick={beginEditing}><Pencil size={13} /></button></td>
     </tr>
-    {editing && <tr className="edit-row"><td colSpan={8}><form className="application-edit-form" onSubmit={submitCorrection}>
-      <label className="edit-field">Company<input value={companyName} onChange={(event) => setCompanyName(event.target.value)} maxLength={255} /></label>
+    {editing && <tr className="edit-row"><td colSpan={8}><form id={`application-edit-${application.id}`} className="application-edit-form" aria-label={`Edit ${application.role || "application"}`} onSubmit={submitCorrection}>
+      <label className="edit-field">Company<input ref={editInputRef} value={companyName} onChange={(event) => setCompanyName(event.target.value)} maxLength={255} /></label>
       <label className="edit-field">Role<input value={role} onChange={(event) => setRole(event.target.value)} maxLength={512} /></label>
       <label className="edit-field">Status<select value={status} onChange={(event) => setStatus(event.target.value)}>{Array.from(new Set([...COMMON_STATUSES, application.status])).map((value) => <option key={value} value={value}>{displayStatus(value)}</option>)}</select></label>
       <label className="edit-field notes-field"><span className="edit-label-heading">Notes{manualFields.includes("notes") && <span className="manual-badge">Manual</span>}</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={10000} rows={2} /></label>

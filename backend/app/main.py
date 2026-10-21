@@ -8,6 +8,7 @@ from sqlalchemy import text
 from app.config import settings
 from app.db import SessionLocal, engine
 from app.processing import seed_patterns_if_empty
+from app.routers.admin import router as admin_router
 from app.routers.applications import router as applications_router
 from app.routers.events import router as events_router
 from app.routers.exports import router as exports_router
@@ -32,6 +33,7 @@ app.include_router(applications_router)
 app.include_router(stats_router)
 app.include_router(exports_router)
 app.include_router(patterns_router)
+app.include_router(admin_router)
 
 
 @app.get("/health", tags=["health"])

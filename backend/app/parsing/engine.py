@@ -11,12 +11,23 @@ logger = logging.getLogger(__name__)
 
 
 class PatternRow(Protocol):
-    ats: str
-    kind: str
-    url_regex: str
-    title_regex: str | None
-    priority: int
-    enabled: bool
+    @property
+    def ats(self) -> str: ...
+
+    @property
+    def kind(self) -> str: ...
+
+    @property
+    def url_regex(self) -> str: ...
+
+    @property
+    def title_regex(self) -> str | None: ...
+
+    @property
+    def priority(self) -> int: ...
+
+    @property
+    def enabled(self) -> bool: ...
 
 
 @dataclass(frozen=True)

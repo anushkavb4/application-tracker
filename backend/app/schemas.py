@@ -83,6 +83,14 @@ class StatsSummaryOut(BaseModel):
     applications_over_time: list[dict[str, Any]]
 
 
+class ReprocessOut(BaseModel):
+    raw_events_processed: int
+    applications_rebuilt: int
+    history_records_rebuilt: int
+    overrides_applied: int
+    errors: list[str] = Field(default_factory=list)
+
+
 class PatternFields(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 

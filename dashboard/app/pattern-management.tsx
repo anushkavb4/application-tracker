@@ -271,9 +271,10 @@ export default function PatternManagement() {
         ) : patterns.length === 0 ? (
           <div className="empty-state"><strong>{error ? "Patterns unavailable" : "No patterns found"}</strong><span>{error || "Create a candidate pattern to begin."}</span></div>
         ) : (
-          <div className="table-scroll">
+          <div className="table-scroll" role="region" aria-label="Parser pattern catalog" tabIndex={0}>
             <table className="pattern-table">
-              <thead><tr><th>ATS</th><th>Kind</th><th>Priority</th><th>State</th><th>URL regex</th><th>Title regex</th><th>Created</th><th>Actions</th></tr></thead>
+              <caption className="sr-only">Configured parser patterns and their actions</caption>
+              <thead><tr><th scope="col">ATS</th><th scope="col">Kind</th><th scope="col">Priority</th><th scope="col">State</th><th scope="col">URL regex</th><th scope="col">Title regex</th><th scope="col">Created</th><th scope="col">Actions</th></tr></thead>
               <tbody>
                 {patterns.map((pattern) => (
                   <tr key={pattern.id}>
